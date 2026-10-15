@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Black Hole: Beura Observatory</title>
+<style>
+:root{--ink:#ebe8e2;--dim:#9a9ca1;--line:rgba(255,255,255,.11);--glass:rgba(10,11,13,.78);--hot:#f0b368;color-scheme:dark;box-sizing:border-box}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#000;color:var(--ink);overflow:hidden;font:15px/1.45 "Avenir Next","Segoe UI",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#ov{pointer-events:none}
+header{position:fixed;left:0;top:0;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 0;pointer-events:none;transition:opacity .5s}
+h1{font:300 22px/1.1 Georgia,"Iowan Old Style",serif;letter-spacing:.02em}
+header p{color:var(--dim);font-size:12.5px;margin-top:3px}
+#strip{margin-top:10px;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums;max-width:70vw}
+#ui{position:fixed;left:0;right:0;bottom:0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px);background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);border-radius:18px 18px 0 0;transition:transform .5s,opacity .5s}
+#sheet{max-height:0;overflow-y:auto;overscroll-behavior:contain;transition:max-height .35s cubic-bezier(.2,.8,.2,1);padding:0 18px}
+#ui.open #sheet{max-height:46vh;padding-top:14px}
+.pane{display:none;padding-bottom:12px}.pane.on{display:block}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 14px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+button{font:inherit;color:inherit;background:none;border:1px solid var(--line);border-radius:22px;min-height:44px;padding:0 15px;white-space:nowrap;cursor:pointer;transition:background .2s,border-color .2s,transform .12s}
+button:active{transform:scale(.96)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+button[aria-pressed=true],button[aria-selected=true]{background:rgba(240,179,104,.14);border-color:var(--hot);color:#fff}
+#tabs{border-top:1px solid var(--line);padding-top:4px}
+h3{font-weight:500;font-size:13px;color:var(--dim);margin:14px 0 2px}
+.sl{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:10px}
+.sl label{font-size:14px}.sl output{font-variant-numeric:tabular-nums;color:var(--dim);font-size:13px}
+.sl input{grid-column:1/3;width:100%;height:36px;-webkit-appearance:none;appearance:none;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:rgba(255,255,255,.2);border-radius:2px}
+input[type=range]::-moz-range-track{height:3px;background:rgba(255,255,255,.2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-10px;border-radius:50%;background:var(--ink);border:0}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--ink);border:0}
+.row{display:flex;justify-content:space-between;gap:12px;width:100%;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;padding:8px 0;white-space:normal}
+.row b{font-weight:400;color:var(--dim)}.row span{font-variant-numeric:tabular-nums;text-align:right}
+.ex{color:var(--dim);font-size:13.5px;padding:8px 0 4px;max-width:62ch}
+.seg{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.seg button{min-height:38px;padding:0 12px;font-size:13.5px}
+#rayc{width:100%;height:190px;border:1px solid var(--line);border-radius:12px;background:#000;touch-action:auto;position:static}
+.note{font-size:12.5px;color:var(--dim);margin-top:8px}
+.big{font-size:16px;margin:6px 0}
+#exit{position:fixed;right:14px;top:calc(12px + env(safe-area-inset-top,0px));background:var(--glass);display:none}
+body.deep #ui,body.deep header{opacity:0;transform:translateY(20px);pointer-events:none}
+body.deep #exit{display:block}
+#splash{position:fixed;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:opacity .7s;z-index:9;text-align:center;padding:20px}
+#splash.off{opacity:0;pointer-events:none}
+#splash h2{font:300 21px Georgia,"Iowan Old Style",serif;margin-bottom:16px;animation:tr 2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes tr{from{letter-spacing:.5em;opacity:0}to{letter-spacing:.2em;opacity:1}}
+.orb{width:124px;height:124px;position:relative;margin-bottom:38px;animation:pop 1.6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.orb i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0,rgba(240,179,104,.06) 40%,#f0b368 80%,#fff3dc 100%);-webkit-mask:radial-gradient(circle,transparent 50%,#000 53%,#000 58%,transparent 72%);mask:radial-gradient(circle,transparent 50%,#000 53%,#000 58%,transparent 72%);animation:sp 3s linear infinite}
+.orb::after{content:"";position:absolute;inset:-16px;border-radius:50%;border:1px solid rgba(255,255,255,.07);transform:rotate(-18deg) scaleY(.32)}
+.orb b{position:absolute;inset:33%;border-radius:50%;background:#000;box-shadow:0 0 34px 8px rgba(240,179,104,.16)}
+@keyframes sp{to{transform:rotate(360deg)}}
+#splash .st{color:var(--dim);font-size:13px;letter-spacing:.04em;min-height:20px}
+.bar{width:min(240px,64vw);height:1px;background:rgba(255,255,255,.12);margin-top:14px;overflow:hidden}
+.bar u{display:block;height:100%;width:0;background:linear-gradient(90deg,transparent,#f0b368)}
+.meta{display:flex;justify-content:space-between;width:min(240px,64vw);margin-top:8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:#6f7176;font-variant-numeric:tabular-nums}
+@media (min-width:900px){
+ #ui{left:auto;top:0;width:380px;border-radius:0;border-left:1px solid var(--line);border-top:0;justify-content:flex-end}
+ #sheet{max-height:none;flex:1;padding:70px 20px 0}
+ #ui.open #sheet,#sheet{padding-top:70px}
+ #strip{max-width:50vw}
+}
+@media (max-height:480px) and (orientation:landscape){#ui.open #sheet{max-height:50vh}header p,#strip{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01s!important}}
+</style></head><body>
+<canvas id="gl" aria-label="Black hole simulation. Drag to orbit, pinch or scroll to zoom." tabindex="0"></canvas>
+<canvas id="ov"></canvas>
+<header><h1>Black Hole</h1><p>Beura Observatory</p><div id="strip"></div></header>
+<button id="exit">Exit deep space</button>
+<div id="ui">
+ <section id="sheet">
+  <div class="pane" id="p-c"></div>
+  <div class="pane" id="p-d"></div>
+  <div class="pane" id="p-l"></div>
+  <div class="pane" id="p-n"></div>
+ </section>
+ <div class="chips" id="modes" role="group" aria-label="View mode"></div>
+ <div class="chips" id="tabs" role="tablist" aria-label="Panels"></div>
+</div>
+<div id="splash"><div class="orb"><i></i><b></b></div><h2>BEURA OBSERVATORY</h2><div class="st" id="st">Initializing optical field…</div><div class="bar"><u id="bar"></u></div><div class="meta"><span id="pc">0%</span><span>Rs = 2GM/c²</span></div></div>
+
+<script>
+"use strict";
+/* ============ CONSTANTS & STATE ============ */
+const K={G:6.6743e-11,c:299792458,Ms:1.98847e30,AU:1.495978707e11,ly:9.4607e15,pc:3.0857e16};
+const $=s=>document.querySelector(s), clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const DEF={logM:6.62,a:.5,inc:74,yaw:0,D:20,rout:11,br:1,dn:1,tp:1,spd:1};
+const tgt=Object.assign({},DEF), cur=Object.assign({},DEF);
+const ui={mode:'obs',q:matchMedia('(min-width:900px)').matches?2:1,mu:'sun',du:'km'};
+const QL=[{n:'Low',s:.5,N:110},{n:'Balanced',s:.7,N:160},{n:'High',s:.9,N:220},{n:'Ultra',s:1,N:300}];
+
+/* ============ PHYSICS (all lengths in metres unless noted) ============ */
+const Phys={
+ rs:M=>2*K.G*M*K.Ms/K.c**2,                       // Rs = 2GM/c^2
+ horizon:a=>(1+Math.sqrt(1-a*a))/2,                // Kerr r+ in units of Rs
+ // Bardeen et al. prograde ISCO (units GM/c^2) -> convert to Rs; a=0 gives 6 GM/c^2 = 3 Rs
+ isco:a=>{const z1=1+Math.cbrt(1-a*a)*(Math.cbrt(1+a)+Math.cbrt(1-a)),z2=Math.sqrt(3*a*a+z1*z1);return (3+z2-Math.sqrt((3-z1)*(3+z1+2*z2)))/2/2},
+ // Renderer keeps a Schwarzschild horizon at r=Rs, so the drawn inner edge is compressed into that space.
+ iscoVis:a=>{const r=Phys.isco(a);return 1.12+(r-.62)*(3-1.12)/(3-.62)},
+ dilation:(r)=>r>1?Math.sqrt(1-1/r):0                // dtau/dt = sqrt(1 - Rs/r), r in Rs
+};
+const E=x=>{const a=Math.abs(x);return a>=1e5||(a<1e-3&&a>0)?x.toExponential(2).replace('e+','e'):String(+x.toPrecision(4))};
+const len=m=>m<1e12?E(m/1e3)+' km':m<9e15?E(m/K.AU)+' AU':E(m/K.ly)+' ly';
+const M=()=>Math.pow(10,tgt.logM);
+const dist=m=>({km:E(m/1e3)+' km',AU:E(m/K.AU)+' AU',ly:E(m/K.ly)+' ly',pc:E(m/K.pc)+' pc'})[ui.du];
+
+/* ============ PRESETS ============ */
+const PRE=[
+ ['Stellar-mass','Illustrative: 10 M☉, hotter inner disk',{logM:1,a:.3,inc:76,rout:9,tp:1.35,dn:1}],
+ ['Supermassive','Illustrative: 10⁸ M☉',{logM:8,a:.6,inc:70,rout:12,tp:.85,dn:1}],
+ ['Sgr A*-inspired','Approximate: ~4.15×10⁶ M☉, spin and tilt assumed',{logM:6.618,a:.5,inc:60,rout:11,tp:.9,dn:1}],
+ ['M87*-inspired','Approximate: ~6.5×10⁹ M☉, near face-on, spin assumed',{logM:9.813,a:.9,inc:20,rout:13,tp:.75,dn:1}],
+ ['Extreme spin','Illustrative: a/M = 0.998, Kerr-inspired',{logM:6.5,a:.998,inc:80,rout:11,tp:1,dn:1}],
+ ['Bare','No disk: shadow and lensing only',{logM:6.6,a:0,inc:70,dn:0}]
+];
+
+/* ============ EDUCATION ============ */
+const LEARN=[
+ ['Event horizon','The boundary beyond which no signal can reach a distant observer. For a non-spinning hole its radius is Rs = 2GM/c².'],
+ ['Photon sphere','An unstable region (r = 1.5 Rs, Schwarzschild) where light can orbit the hole. Rays that skim it make the thin bright photon ring.'],
+ ['Shadow','The dark disc you see is larger than the horizon: rays with impact parameter below √27 GM/c² ≈ 2.6 Rs are captured.'],
+ ['ISCO','The innermost stable circular orbit: 6 GM/c² (3 Rs) without spin, shrinking for prograde orbits around a spinning hole. Matter inside it plunges.'],
+ ['Gravitational lensing','Gravity bends light. Stars behind the hole are displaced and stretched; the far side of the disk is bent into view above and below the shadow.'],
+ ['Doppler beaming','Gas on the approaching side moves toward you, so its light is blueshifted and brightened. The receding side is redder and dimmer. Gravitational redshift dims light climbing out of the well.'],
+ ['What this model is','Each pixel traces a light ray with a weak-field-style bending term that reproduces the Schwarzschild deflection (u″ = −u + 3GMu²/c²). Disk colour uses a blackbody-like ramp. Spin adds a frame-dragging-inspired twist and the real Kerr ISCO formula. It is not a full Kerr ray tracer and not a telescope image.']
+];
+
+/* ============ SHADERS ============ */
+const VS='attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+const FS=`precision highp float;
+uniform vec2 R,C;uniform float T,D,yaw,inc,rin,rout,br,dn,tp,sp,sg,dg,ex;uniform int N;
+float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+7.1;a*=.5;}return s;}
+vec3 h33(vec3 p){p=fract(p*vec3(.1031,.103,.0973));p+=dot(p,p.yxz+33.33);return fract((p.xxy+p.yxx)*p.zyx);}
+vec3 stars(vec3 d){vec3 c=vec3(0);
+ for(int k=0;k<2;k++){float s=k==0?60.:130.;vec3 q=d*s,id=floor(q),f=q-id,h=h33(id+float(k)*17.);
+  if(h.x>.85){vec3 o=h33(id+3.7)*.6+.2;float r=length(f-o);float b=exp(-r*r*(k==0?90.:40.))*(h.y*h.y*1.9+.15);
+   c+=b*mix(vec3(1.,.72,.55),vec3(.65,.8,1.),h.z)*(k==0?1.:.65);}}
+ float band=exp(-pow(dot(d,normalize(vec3(.35,.9,.25))),2.)*14.);
+ c+=vec3(.5,.55,.8)*band*(.03+.09*fbm(d.xz*5.+d.y*4.));return c;}
+vec3 bb(float t){t=clamp(t,0.,3.);return vec3(smoothstep(0.,.55,t),smoothstep(.18,1.5,t)*.92,smoothstep(.75,2.5,t))*vec3(1.,.95,1.);}
+void main(){
+ vec2 uv=(gl_FragCoord.xy-C*R)/min(R.x,R.y)*2.;
+ float el=1.5707963-radians(inc);
+ vec3 ro=D*vec3(cos(el)*sin(yaw),sin(el),cos(el)*cos(yaw));
+ vec3 fw=-normalize(ro),rt=normalize(cross(fw,vec3(0,1,0))),up=cross(rt,fw);
+ vec3 v=normalize(fw+(uv.x*rt+uv.y*up)*.7),p=ro,S=vec3(0,1,0);
+ vec3 cp=cross(p,v);float h2=dot(cp,cp);
+ vec3 acc=vec3(0);float tr=1.,rmin=1e3;bool cap=false,done=false;
+ float rl=max(D,30.)*1.3;
+ float ph=fract(T/30.),wa=sin(3.14159*ph);wa*=wa;float tA=ph*30.,tB=fract(ph+.5)*30.;
+ for(int i=0;i<300;i++){
+  if(i>=N)break;
+  float r=length(p);rmin=min(rmin,r);
+  if(r<1.01){cap=true;done=true;break;}
+  if(r>rl&&dot(p,v)>0.){done=true;break;}
+  float dt=clamp(.05*(r-.95),.012,3.);
+  // Schwarzschild light bending as an effective central force (Rs=1): a = -1.5 h^2 r_vec / r^5
+  vec3 a=-1.5*h2*p/(r*r*r*r*r);
+  // frame-dragging-inspired gravitomagnetic twist (not Kerr geodesics)
+  if(sp>0.){vec3 B=(3.*p*dot(p,S)/(r*r)-S)/(r*r*r);a+=sp*.5*cross(v,B);}
+  vec3 pv=p;v=normalize(v+a*dt);p+=v*dt;
+  if(pv.y*p.y<0.&&dn>0.){
+   float k=pv.y/(pv.y-p.y);vec3 hp=mix(pv,p,k);float rr=length(hp.xz);
+   if(rr>rin&&rr<rout){
+    float om=pow(rr,-1.5);float t1=tA*om*.9,t2=tB*om*.9;
+    vec2 qa=mat2(cos(t1),-sin(t1),sin(t1),cos(t1))*hp.xz*2.4,qb=mat2(cos(t2),-sin(t2),sin(t2),cos(t2))*hp.xz*2.4;
+    float n=mix(fbm(qb),fbm(qa),wa);
+    float dens=dn*(.2+1.15*n)*(.65+.35*vn(vec2(rr*5.,3.)));
+    float fade=smoothstep(rout,rout*.7,rr)*smoothstep(rin,rin*1.1,rr);
+    vec3 tg=normalize(vec3(-hp.z,0,hp.x));
+    float bt=min(.88,sqrt(.5/max(rr-1.,.08))*(1.+.15*sp));
+    float dop=1./(1./sqrt(1.-bt*bt)*(1.+bt*dot(tg,v)));   // relativistic Doppler factor
+    float g=dop*sqrt(max(1.-1./rr,.02));                   // times gravitational redshift
+    float Tr=tp*pow(rin/rr,.75)*(.35+pow(max(1.-sqrt(rin/rr),0.),.25));
+    float To=Tr*g;
+    float em=dens*fade*pow(To,3.2)*br*3.;
+    acc+=tr*bb(To*1.15)*em*dg;
+    tr*=exp(-dens*fade*1.1);
+   }}
+ }
+ vec3 col=acc;
+ if(!cap){ if(done) col+=tr*stars(normalize(v))*sg; }
+ float ring=exp(-pow((rmin-1.5)*10.,2.));
+ if(!cap||!done) col+=vec3(1.,.82,.6)*ring*.22*tr*dg*(cap?0.:1.);
+ col=1.-exp(-col*ex);col=pow(col,vec3(.92));
+ col*=1.-.25*dot(uv*.4,uv*.4);
+ col+=(h21(gl_FragCoord.xy+fract(T))-.5)/255.;
+ gl_FragColor=vec4(col,1.);}`;
+
+/* ============ RENDERER ============ */
+const cv=$('#gl'),ov=$('#ov'),octx=ov.getContext('2d');
+let gl=null,prog,U={},fb=null,dpr=1,cx=.5,cy=.5;
+function initGL(){
+ try{gl=cv.getContext('webgl',{antialias:false,powerPreference:'high-performance'})||cv.getContext('experimental-webgl');}catch(e){}
+ if(!gl)return false;
+ const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(o));return null}return o};
+ const v=sh(gl.VERTEX_SHADER,VS),f=sh(gl.FRAGMENT_SHADER,FS);if(!v||!f)return gl=null;
+ prog=gl.createProgram();gl.attachShader(prog,v);gl.attachShader(prog,f);gl.linkProgram(prog);
+ if(!gl.getProgramParameter(prog,gl.LINK_STATUS))return gl=null;
+ gl.useProgram(prog);
+ gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+ const l=gl.getAttribLocation(prog,'p');gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0);
+ 'R C T D yaw inc rin rout br dn tp sp sg dg ex N'.split(' ').forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+ return true;
+}
+function resize(){
+ dpr=Math.min(window.devicePixelRatio||1,2);
+ const w=innerWidth,h=innerHeight,desk=w>=900;
+ ov.width=Math.round(w*dpr);ov.height=Math.round(h*dpr);
+ const s=QL[ui.q].s;cv.width=Math.max(2,Math.round(w*dpr*s));cv.height=Math.max(2,Math.round(h*dpr*s));
+ // shift the scene clear of the panel: right panel on desktop, bottom sheet on portrait mobile
+ cx=desk?(w-380)/2/w:.5;
+ cy=desk?.5:(h>w?.6:.55);
+ if(gl)gl.viewport(0,0,cv.width,cv.height);
+ drawRay();
+}
+/* Fallback when WebGL is missing: static 2D impression */
+function fallback(t){
+ const c=cv.getContext('2d'),w=cv.width=innerWidth,h=cv.height=innerHeight,x=w*cx,y=h*cy,r=Math.min(w,h)*.16;
+ c.fillStyle='#000';c.fillRect(0,0,w,h);
+ for(let i=0;i<160;i++){c.fillStyle='rgba(255,255,255,'+(.2+.6*((i*37%10)/10))+')';c.fillRect((i*7919)%w,(i*104729)%h,1.3,1.3)}
+ const g=c.createRadialGradient(x,y,r,x,y,r*3);g.addColorStop(0,'rgba(255,200,120,.9)');g.addColorStop(1,'rgba(255,120,40,0)');
+ c.save();c.translate(x,y);c.scale(1,.28);c.translate(-x,-y);c.fillStyle=g;c.beginPath();c.arc(x,y,r*3,0,7);c.fill();c.restore();
+ c.fillStyle='#000';c.beginPath();c.arc(x,y,r,0,7);c.fill();
+ c.fillStyle='#9a9ca1';c.font='13px sans-serif';c.textAlign='center';c.fillText('WebGL unavailable: showing a static illustration. Readouts still work.',w/2,h*.1+30);
+}
+let last=0,anim=0,ema=.016,slow=0,uiT=0;
+function frame(t){
+ requestAnimationFrame(frame);
+ const dt=Math.min(.05,(t-last)/1000||.016);last=t;
+ const k=1-Math.exp(-dt*7);
+ for(const key in cur)if(key!=='spd')cur[key]+=(tgt[key]-cur[key])*k;cur.spd=tgt.spd;
+ anim+=dt*cur.spd;
+ if(!gl){if(!frame.f){frame.f=1;fallback()}return}
+ const a=clamp(cur.a,0,.998),rs=Phys.iscoVis(a),m=ui.mode;
+ const sg=m==='lens'?1.9:m==='disk'?.35:1,dg=m==='lens'?.45:m==='disk'?1.5:1;
+ gl.uniform2f(U.R,cv.width,cv.height);gl.uniform2f(U.C,cx,cy);
+ gl.uniform1f(U.T,anim);gl.uniform1f(U.D,cur.D);gl.uniform1f(U.yaw,cur.yaw);gl.uniform1f(U.inc,clamp(cur.inc,2,88));
+ gl.uniform1f(U.rin,rs);gl.uniform1f(U.rout,Math.max(cur.rout,rs+1.5));gl.uniform1f(U.br,cur.br);gl.uniform1f(U.dn,cur.dn);
+ gl.uniform1f(U.tp,cur.tp);gl.uniform1f(U.sp,a);gl.uniform1f(U.sg,sg);gl.uniform1f(U.dg,dg);gl.uniform1f(U.ex,1.25);
+ gl.uniform1i(U.N,QL[ui.q].N);
+ gl.drawArrays(gl.TRIANGLES,0,3);
+ // adaptive quality: step down if frames stay slow
+ ema+=(dt-ema)*.05;slow=ema>.036?slow+1:0;
+ if(slow>90&&ui.q>0){ui.q--;slow=0;ema=.016;resize();paintQ()}
+ drawOverlay();
+}
+
+/* ============ SCIENTIFIC OVERLAY ============ */
+function drawOverlay(){
+ const w=ov.width,h=ov.height;octx.clearRect(0,0,w,h);
+ if(ui.mode!=='sci')return;
+ const x=cx*w,y=(1-cy)*h,sc=Math.min(w,h)/2/.7,D=cur.D,px=r=>r/D*sc,a=clamp(cur.a,0,.998);
+ const ci=Math.cos(clamp(cur.inc,2,88)*Math.PI/180),f=11*dpr;
+ octx.lineWidth=1*dpr;octx.font=f+'px "Avenir Next",system-ui,sans-serif';octx.fillStyle=octx.strokeStyle='rgba(235,232,226,.75)';
+ const ell=(r,dash,label,ang)=>{octx.setLineDash(dash);octx.beginPath();octx.ellipse(x,y,r,r*ci,0,0,7);octx.stroke();octx.setLineDash([]);if(label)octx.fillText(label,x+r*Math.cos(ang)+5*dpr,y+r*ci*Math.sin(ang)-4*dpr)};
+ const sh=px(2.598*Math.sqrt(Math.max(.01,1-1/D)));
+ octx.beginPath();octx.arc(x,y,sh,0,7);octx.stroke();octx.fillText('shadow ≈ 2.6 Rs',x-sh,y+sh+f*1.4);
+ ell(px(Phys.isco(a)),[4*dpr,4*dpr],'ISCO',-.9);
+ ell(px(cur.rout),[2*dpr,5*dpr],'outer edge',.6);
+ octx.setLineDash([]);octx.beginPath();octx.moveTo(x,y-sh*1.35);octx.lineTo(x,y-sh*2.1);octx.stroke();octx.fillText('spin axis',x+6*dpr,y-sh*1.8);
+ octx.fillStyle='rgba(154,156,161,.9)';octx.fillText('Geometric overlay: lensing not applied to the rings',14*dpr,h-(innerWidth<900?190:20)*dpr);
+}
+
+/* ============ UI ============ */
+const paneIds=['c','d','l','n'],TAB=[['c','Controls'],['d','Data'],['l','Labs'],['n','Learn']];
+const MODES=[['obs','Observatory'],['sci','Scientific'],['deep','Deep space'],['lens','Lensing'],['disk','Disk']];
+const SL=[
+ ['Black hole',[['logM','Mass (log₁₀ M☉)',0,10,.01,v=>E(Math.pow(10,v))+' M☉'],['a','Spin a/M (Kerr-inspired)',0,.998,.002,v=>(+v).toFixed(3)]]],
+ ['Accretion disk',[['rout','Outer radius',4,24,.1,v=>(+v).toFixed(1)+' Rs'],['br','Brightness',.2,3,.01,v=>(+v).toFixed(2)],['dn','Density',0,2,.01,v=>(+v).toFixed(2)],['tp','Temperature',.4,1.8,.01,v=>(+v).toFixed(2)+'×']]],
+ ['View',[['inc','Inclination',2,88,.5,v=>Math.round(v)+'°'],['D','Observer distance',4,80,.5,v=>(+v).toFixed(1)+' Rs'],['spd','Animation speed',0,3,.05,v=>(+v).toFixed(2)+'×']]]
+];
+const fmts={};
+function sliderHTML(s){fmts[s[0]]=s[5];return `<div class="sl"><label for="s-${s[0]}">${s[1]}</label><output id="o-${s[0]}"></output><input id="s-${s[0]}" data-k="${s[0]}" type="range" min="${s[2]}" max="${s[3]}" step="${s[4]}"></div>`}
+function buildUI(){
+ $('#modes').innerHTML=MODES.map(m=>`<button data-m="${m[0]}" aria-pressed="false">${m[1]}</button>`).join('');
+ $('#tabs').innerHTML=TAB.map(t=>`<button role="tab" data-t="${t[0]}" aria-selected="false">${t[1]}</button>`).join('')+'<button id="reset" aria-label="Reset view">Reset view</button>';
+ $('#p-c').innerHTML='<h3>Presets</h3><div class="seg" id="pre">'+PRE.map((p,i)=>`<button data-p="${i}" title="${p[1]}">${p[0]}</button>`).join('')+'</div><p class="note" id="pnote">Presets are illustrative or approximate, not observational reproductions.</p>'
+  +SL.map(g=>'<h3>'+g[0]+'</h3>'+g[1].map(sliderHTML).join('')).join('')+'<h3>Render quality</h3><div class="seg" id="qs">'+QL.map((q,i)=>`<button data-q="${i}" aria-pressed="false">${q.n}</button>`).join('')+'</div>';
+ // data panel
+ $('#p-d').innerHTML='<h3>Units</h3><div class="seg" id="mu">'+[['sun','M☉'],['kg','kg']].map(u=>`<button data-mu="${u[0]}" aria-pressed="false">${u[1]}</button>`).join('')+'</div><div class="seg" id="du">'+['km','AU','ly','pc'].map(u=>`<button data-du="${u}" aria-pressed="false">${u}</button>`).join('')+'</div><p class="note">Tap a row for an explanation. Derived values are approximate.</p><div id="rows"></div>';
+ $('#rows').innerHTML=ROWS.map((r,i)=>`<button class="row" aria-expanded="false" data-r="${i}"><b>${r[0]}</b><span id="rv${i}"></span></button><p class="ex" id="re${i}" hidden>${r[1]}</p>`).join('');
+ // labs
+ $('#p-l').innerHTML=`<h3>Photon ray</h3><canvas id="rayc"></canvas>
+ <div class="sl"><label for="rb">Impact parameter b</label><output id="rbo"></output><input id="rb" type="range" min="0.5" max="8" step="0.01" value="3.4"></div>
+ <p class="big" id="rres"></p><p class="note">A photon arrives from the right with offset b (in Rs). Integrates u″ = −u + 1.5u² (Schwarzschild null geodesic, Rs = 1).</p>
+ <h3>Relativistic clock</h3><div class="sl"><label for="rc">Clock radius</label><output id="rco"></output><input id="rc" type="range" min="1.01" max="20" step="0.01" value="3"></div>
+ <p class="big" id="cres"></p><p class="note">Simplified Schwarzschild relation dτ/dt = √(1 − Rs/r) for a static clock. Valid only outside the horizon.</p>`;
+ $('#p-n').innerHTML=LEARN.map(l=>`<h3 style="color:var(--ink)">${l[0]}</h3><p class="ex">${l[1]}</p>`).join('');
+}
+const ROWS=[
+ ['Mass','Sets the scale of everything below. Rs grows linearly with mass.'],
+ ['Schwarzschild radius','Rs = 2GM/c². The horizon radius of a non-spinning hole.'],
+ ['Event horizon','Kerr r₊ = (GM/c²)(1+√(1−a²)). Equals Rs when spin is zero.'],
+ ['Photon sphere (a=0)','1.5 Rs. For a spinning hole the orbit radius depends on direction, so this is the Schwarzschild value.'],
+ ['ISCO (prograde)','Innermost stable circular orbit from the Bardeen formula. 3 Rs at zero spin. The drawn inner edge is a compressed visual mapping.'],
+ ['Shadow radius','Critical impact parameter √27 GM/c² ≈ 2.6 Rs, the apparent edge of the dark disc (Schwarzschild).'],
+ ['Observer distance','Distance of the camera from the centre. Changes how large the hole appears.'],
+ ['Inclination','Angle between your line of sight and the spin axis. 0° is pole-on, 90° is edge-on.'],
+ ['Time dilation at observer','Static clock at your distance runs at √(1 − Rs/r) of a far-away clock.'],
+ ['Eddington luminosity','L ≈ 1.26×10³¹ W × (M/M☉). The radiation limit for steady spherical accretion; a derived reference only.']
+];
+function upd(){
+ const m=M(),rs=Phys.rs(m),a=tgt.a,rsm=rs;
+ const v=[ui.mu==='sun'?E(m)+' M☉':E(m*K.Ms)+' kg',len(rs),len(rs*Phys.horizon(a)),len(rs*1.5),len(rs*Phys.isco(a)),len(rs*2.598),dist(rs*tgt.D)+' ('+tgt.D.toFixed(1)+' Rs)',Math.round(tgt.inc)+'°',(Phys.dilation(tgt.D)).toFixed(4)+'×',E(1.26e31*m)+' W'];
+ v.forEach((s,i)=>{const e=$('#rv'+i);if(e)e.textContent=s});
+ for(const k in fmts){const o=$('#o-'+k),i=$('#s-'+k);if(o&&i){o.textContent=fmts[k](tgt[k]);if(document.activeElement!==i)i.value=tgt[k]}}
+ $('#strip').textContent=(ui.mu==='sun'?E(m)+' M☉':E(m*K.Ms)+' kg')+'  ·  Rs '+len(rs)+'  ·  a/M '+a.toFixed(2)+'  ·  i '+Math.round(tgt.inc)+'°';
+ $('#modes').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===ui.mode));
+ $('#mu').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mu===ui.mu));
+ $('#du').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.du===ui.du));
+ clockUpd();
+}
+function paintQ(){document.querySelectorAll('#qs button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.q===ui.q))}
+function openTab(t){
+ const box=$('#ui'),was=box.dataset.t===t&&box.classList.contains('open');
+ const desk=innerWidth>=900;
+ if(was&&!desk){box.classList.remove('open');box.dataset.t='';}else{box.classList.add('open');box.dataset.t=t}
+ paneIds.forEach(i=>$('#p-'+i).classList.toggle('on',i===(box.dataset.t||'c')));
+ $('#tabs').querySelectorAll('[role=tab]').forEach(b=>b.setAttribute('aria-selected',box.classList.contains('open')&&b.dataset.t===box.dataset.t));
+ if(t==='l')drawRay();
+}
+function setMode(m){ui.mode=m;document.body.classList.toggle('deep',m==='deep');upd()}
+function resetView(){Object.assign(tgt,{yaw:0,inc:74,D:20})}
+
+/* ============ LABS ============ */
+function drawRay(){
+ const c=$('#rayc');if(!c)return;const w=c.clientWidth,h=c.clientHeight;if(!w)return;
+ c.width=w*dpr;c.height=h*dpr;const x=c.getContext('2d');x.scale(dpr,dpr);
+ const b=+$('#rb').value,sc=Math.min(w/2,h/2)/6.5,ox=w/2,oy=h/2;
+ $('#rbo').textContent=b.toFixed(2)+' Rs';
+ // integrate u(phi): u'' = -u + 1.5 u^2 (Rs = 1); start far away, du/dphi = 1/b
+ let u=1e-4,wv=1/b,phi=0,pts=[],out='escapes';const d=.002;let rmin=1e9,esc=false;
+ for(let i=0;i<9000;i++){
+  wv+=(-u+1.5*u*u)*d;u+=wv*d;phi+=d;
+  if(u>=1){out='cap';break}
+  if(u<=0){esc=true;break}
+  const r=1/u;rmin=Math.min(rmin,r);if(r<20&&i%3===0)pts.push([ox+r*Math.cos(phi)*sc,oy-r*Math.sin(phi)*sc]);
+ }
+ x.fillStyle='#000';x.fillRect(0,0,w,h);
+ x.strokeStyle='rgba(235,232,226,.2)';x.setLineDash([3,4]);x.beginPath();x.arc(ox,oy,1.5*sc,0,7);x.stroke();x.setLineDash([]);
+ x.fillStyle='#000';x.strokeStyle='rgba(235,232,226,.6)';x.beginPath();x.arc(ox,oy,sc,0,7);x.fill();x.stroke();
+ x.strokeStyle='#f0b368';x.lineWidth=2;x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.stroke();
+ const bc=2.598;let msg;
+ if(out==='cap')msg='Crosses the event horizon (captured). b is below the critical value ≈ 2.60 Rs.';
+ else if(esc&&Math.abs(b-bc)/bc<.04)msg='Approaches the photon sphere: winds nearly around the hole before escaping.';
+ else{const defl=(phi-Math.PI)*180/Math.PI;msg=(defl>35?'Bends strongly':'Weakly deflected')+', then escapes. Deflection ≈ '+defl.toFixed(0)+'°.'}
+ $('#rres').textContent=msg+'  b ≈ '+len(b*Phys.rs(M()));
+}
+function clockUpd(){
+ const r=+$('#rc')?.value;if(!r)return;$('#rco').textContent=r.toFixed(2)+' Rs';
+ const rt=Phys.dilation(r);$('#cres').textContent=r<=1?'Inside the horizon: formula invalid.':'Clock runs at '+rt.toFixed(4)+'× the distant rate. 1 s here = '+(1/rt).toFixed(2)+' s far away.';
+}
+
+/* ============ INTERACTION ============ */
+function bind(){
+ document.addEventListener('input',e=>{const t=e.target;
+  if(t.dataset.k){tgt[t.dataset.k]=+t.value;upd()}
+  else if(t.id==='rb')drawRay();else if(t.id==='rc')clockUpd();});
+ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.m)setMode(d.m);
+  else if(d.t)openTab(d.t);
+  else if(d.p!==undefined){const p=PRE[d.p];Object.assign(tgt,{br:1,dn:1,spd:tgt.spd},p[2]);$('#pnote').textContent=p[0]+': '+p[1]+'.';upd()}
+  else if(d.q!==undefined){ui.q=+d.q;resize();paintQ()}
+  else if(d.mu){ui.mu=d.mu;upd()}
+  else if(d.du){ui.du=d.du;upd()}
+  else if(d.r!==undefined){const p=$('#re'+d.r),o=p.hidden;p.hidden=!o;b.setAttribute('aria-expanded',o)}
+  else if(b.id==='reset')resetView();
+  else if(b.id==='exit')setMode('obs');});
+ const P=new Map();let pd=0;const pinch=()=>{const a=[...P.values()];return a.length>1?Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]):0};
+ const hostEl=cv;
+ hostEl.addEventListener('pointerdown',e=>{hostEl.setPointerCapture(e.pointerId);P.set(e.pointerId,[e.clientX,e.clientY]);pd=pinch()});
+ hostEl.addEventListener('pointermove',e=>{if(!P.has(e.pointerId))return;const o=P.get(e.pointerId);P.set(e.pointerId,[e.clientX,e.clientY]);
+  if(P.size===1){tgt.yaw-=(e.clientX-o[0])*.006;tgt.inc=clamp(tgt.inc-(e.clientY-o[1])*.2,2,88)}
+  else{const n=pinch();if(pd&&n)tgt.D=clamp(tgt.D*pd/n,4,80);pd=n}upd()});
+ const up=e=>{P.delete(e.pointerId);pd=pinch()};hostEl.addEventListener('pointerup',up);hostEl.addEventListener('pointercancel',up);
+ hostEl.addEventListener('wheel',e=>{e.preventDefault();tgt.D=clamp(tgt.D*Math.exp(e.deltaY*.001),4,80);upd()},{passive:false});
+ addEventListener('keydown',e=>{if(/INPUT|BUTTON/.test(e.target.tagName)&&e.key!=='Escape')return;
+  const k=e.key;if(k==='ArrowLeft')tgt.yaw+=.1;else if(k==='ArrowRight')tgt.yaw-=.1;else if(k==='ArrowUp')tgt.inc=clamp(tgt.inc-3,2,88);else if(k==='ArrowDown')tgt.inc=clamp(tgt.inc+3,2,88);
+  else if(k==='+'||k==='=')tgt.D=clamp(tgt.D/1.1,4,80);else if(k==='-')tgt.D=clamp(tgt.D*1.1,4,80);else if(k==='r'||k==='R')resetView();
+  else if(k==='Escape'&&ui.mode==='deep')setMode('obs');else if(k>='1'&&k<='5')setMode(MODES[k-1][0]);else return;
+  e.preventDefault();upd()});
+ let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{resize();openTab.skip=1;upd()},120)});
+}
+
+/* ============ BOOT ============ */
+buildUI();bind();
+if(!initGL())console.warn('WebGL unavailable, using fallback');
+resize();paintQ();
+if(innerWidth>=900)openTab('c');
+upd();requestAnimationFrame(frame);
+(()=>{const ST=[['Initializing optical field',0],['Calibrating observer',34],['Tracing photon paths',64],['Loading simulation',88]],rm=matchMedia('(prefers-reduced-motion:reduce)').matches,tot=rm?200:2600,t0=performance.now();
+ const tick=()=>{const p=Math.min(1,(performance.now()-t0)/tot),pc=Math.round((1-Math.pow(1-p,2))*100);let m=ST[0][0];ST.forEach(x=>{if(pc>=x[1])m=x[0]});
+  $('#pc').textContent=pc+'%';$('#bar').style.width=pc+'%';$('#st').textContent=m+'…';
+  if(p<1)requestAnimationFrame(tick);else setTimeout(()=>$('#splash').classList.add('off'),280)};tick()})();
+</script></body></html>
