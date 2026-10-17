@@ -393,7 +393,7 @@ if(!initGL())console.warn('WebGL unavailable, using fallback');
 resize();paintQ();
 if(innerWidth>=900)openTab('c');
 upd();requestAnimationFrame(frame);
-(()=>{const ST=[['Initializing optical field',0],['Calibrating observer',34],['Tracing photon paths',64],['Loading simulation',88]],rm=matchMedia('(prefers-reduced-motion:reduce)').matches,tot=rm?200:2600,t0=performance.now();
+(()=>{const ST=[['Initializing optical field',0],['Calibrating observer',34],['Tracing photon paths',64],['Loading simulation',88]],rm=matchMedia('(prefers-reduced-motion:reduce)').matches,tot=rm?200:2600,t0=performance.now(); 
  const tick=()=>{const p=Math.min(1,(performance.now()-t0)/tot),pc=Math.round((1-Math.pow(1-p,2))*100);let m=ST[0][0];ST.forEach(x=>{if(pc>=x[1])m=x[0]});
   $('#pc').textContent=pc+'%';$('#bar').style.width=pc+'%';$('#st').textContent=m+'…';
   if(p<1)requestAnimationFrame(tick);else setTimeout(()=>$('#splash').classList.add('off'),280)};tick()})();
